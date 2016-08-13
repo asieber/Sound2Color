@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Picture;
@@ -22,7 +23,7 @@ import be.tarsos.dsp.util.fft.FFT;
 /**
  * TODO: document your custom view class.
  */
-public class WaveformView extends View {
+public abstract class WaveformView extends View {
 
     public static final int MODE_RECORDING = 1;
     public static final int MODE_PLAYBACK = 2;
@@ -36,16 +37,20 @@ public class WaveformView extends View {
     private int brightness;
     private Rect drawRect;
 
-    private int width, height;
-    private float xStep, centerY;
+    protected int width, height;
+    protected float xStep, centerY;
     private int mMode, mAudioLength, mMarkerPosition, mSampleRate, mChannels;
-    private short[] mSamples;
+    protected short[] mSamples;
     private LinkedList<float[]> mHistoricalData;
     private Picture mCachedWaveform;
     private Bitmap mCachedWaveformBitmap;
     private int colorDelta = 255 / (HISTORY_SIZE + 1);
 
-    private float[] waveformPoints;
+    //protected float[] waveformPoints;
+    protected float[] mYPoints;
+
+    protected boolean isPortrait;
+    protected float value, hue, previousHue, averageVolume;
 
     public WaveformView(Context context) {
         super(context);
@@ -62,7 +67,7 @@ public class WaveformView extends View {
         init(context, attrs, defStyle);
     }
 
-    private void init(Context context, AttributeSet attrs, int defStyle) {
+    protected void init(Context context, AttributeSet attrs, int defStyle) {
         // Load attributes
         final TypedArray a = getContext().obtainStyledAttributes(
                 attrs, R.styleable.WaveformView, defStyle, 0);
@@ -128,6 +133,16 @@ public class WaveformView extends View {
     protected void onDraw(Canvas canvas) {     //This is where ACTUAL wave (points) is being drawn onto screen (I belive): TEST
         super.onDraw(canvas);
 
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //System.out.println("BUG");
+
+        float[] hsv = {hue,1,value};
+        //float[] hsv = {hue,1,1};
+        mStrokePaint.setColor(Color.HSVToColor(hsv));
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         LinkedList<float[]> temp = mHistoricalData;      //what's this all about? find out from "TIP" below...
         if (mMode == MODE_RECORDING && temp != null) {
             brightness = colorDelta;
@@ -136,14 +151,7 @@ public class WaveformView extends View {
                 canvas.drawLines(p, mStrokePaint);       //WHAT THE HELL IS GOING ON HERE??? ===> INSPECT API: canvas.drawLines()
                 brightness += colorDelta;
             }
-        } else if (mMode == MODE_PLAYBACK) {
-            if (mCachedWaveform != null) {
-                canvas.drawPicture(mCachedWaveform);
-            } else if (mCachedWaveformBitmap != null) {
-                canvas.drawBitmap(mCachedWaveformBitmap, null, drawRect, null);
-            }
-            if (mMarkerPosition > -1 && mMarkerPosition < mAudioLength)
-                canvas.drawLine(xStep * mMarkerPosition, 0, xStep * mMarkerPosition, height, mMarkerPaint);
+            //canvas.drawRect(0,0,3.4f*centerY,2*centerY,mStrokePaint);
         }
     }
 
@@ -159,7 +167,8 @@ public class WaveformView extends View {
         return mSamples;
     }
 
-    public void setSamples(short[] samples) {
+    public void setSamples(short[] samples, float[] yPoints) {
+        mYPoints = yPoints;
         mSamples = samples;
         calculateAudioLength();
         onSamplesChanged();        //actually calling this method... could be important... probably not..
@@ -218,19 +227,9 @@ public class WaveformView extends View {
             }
 
             drawRecordingWaveform(mSamples, waveformPoints);      //mSamples == buffer (below)
-
-            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-            //this.waveformPoints = waveformPoints;
-
-            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
             temp.addLast(waveformPoints);
             mHistoricalData = temp;
             postInvalidate();
-        } else if (mMode == MODE_PLAYBACK) {
-            mMarkerPosition = -1;
-            createPlaybackWaveform();
         }
     }
 
@@ -240,70 +239,7 @@ public class WaveformView extends View {
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void drawRecordingWaveform(short[] buffer, float[] waveformPoints) {    //difference between these arguments??? CRUCIAL!!!!!!
-        float lastX = -1;
-        float lastY = -1;
-        int pointIndex = 0;
-        float max = Short.MAX_VALUE;     //key indicator for above predicament..?
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        //float[] yPoints = new float[waveformPoints.length/2];      //2*width
-        float[] yPoints = new float[2*width];
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        // For efficiency, we don't draw all of the samples in the buffer, but only the ones
-        // that align with pixel boundaries.
-        for (int x = 0; x < width; x++) {    //x just increments continuously & constantly
-
-            int index = (int) (((x * 1.0f) / width) * buffer.length);   //index proportional to x but on different (buffer) scale
-            short sample = buffer[index];     //buffer == mSamples (only in above method (onSamplesChanged)
-            float y = centerY - ((sample / max) * centerY);
-
-            //FLOATS JUST CONVERTING SHORTS INTO USEFUL "SCREEN-ADJUSTED" DATA POINTS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-            if (lastX != -1) {
-                waveformPoints[pointIndex++] = lastX;
-
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-                yPoints[pointIndex/2] = -(lastY-centerY)/centerY;
-
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-                waveformPoints[pointIndex++] = lastY;
-                waveformPoints[pointIndex++] = x;
-
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-                yPoints[pointIndex/2] = -(y-centerY)/centerY;
-
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-                waveformPoints[pointIndex++] = y;
-            }
-            lastX = x;
-            lastY = y;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        FFT fft = new FFT(2*width, null);     //[100, 2*width] == "safe" range ....... null window == BUGGY, cos == GOOD
-        fft.forwardTransform(yPoints);
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        //for(int i=1; i < waveformPoints.length; i+=2)
-        //    waveformPoints[i] = yPoints[i/2]+centerY;      //+2*centerY to see only positive spikes (bottom half of view is cut off)
-        for(int i=1; i < 4*width; i+=2)
-            waveformPoints[i] = yPoints[i/2]+centerY;     //EFFICIENCY: ALL THE SUBCLASSES USE THE SAME ARRAY
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    }
+    abstract void drawRecordingWaveform(short[] buffer, float[] waveformPoints);
 
     Path drawPlaybackWaveform(int width, int height, short[] buffer) {   //Can basically ignore.....
         Path waveformPath = new Path();
@@ -363,5 +299,17 @@ public class WaveformView extends View {
         for (float i = 0; i <= seconds; i += secondStep) {
             canvas.drawText(String.format("%.2f", i), i * xStep, textHeight, mTextPaint);
         }
+    }
+
+    public void setYPoints(float[] yPoints) { mYPoints = yPoints; }
+
+    public float[] getYPoints() { return mYPoints; }
+
+    public void setPortraitOrientation(boolean isPortrait) {
+        this.isPortrait = isPortrait;
+    }
+
+    public boolean getPortraitOrientation() {
+        return this.isPortrait;
     }
 }
