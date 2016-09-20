@@ -1,6 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.newventuresoftware.waveform">
 
     <library android:name="@string/library_name" />
+
+    <application>
+        <activity android:name=".MainMenu"></activity>
+    </application>
 
 </manifest>

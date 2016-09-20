@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Picture;
@@ -45,7 +46,13 @@ public class WaveformBassColorView extends View {
     private Bitmap mCachedWaveformBitmap;
     private int colorDelta = 255 / (HISTORY_SIZE + 1);
 
-    private float amplitude, frequency;
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    private float value, hue, previousHue, averageVolume;
+
+    private float[] mYPoints;   //, mWaveformPoints
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public WaveformBassColorView(Context context) {
         super(context);
@@ -119,31 +126,36 @@ public class WaveformBassColorView extends View {
         if (mHistoricalData != null) {
             mHistoricalData.clear();
         }
-        if (mMode == MODE_PLAYBACK) {
-            createPlaybackWaveform();
-        }
+
     }
 
     @Override
-    protected void onDraw(Canvas canvas) {     //This is where ACTUAL wave (points) is being drawn onto screen (I belive): TEST
+    protected void onDraw(Canvas canvas) {     //This is where ACTUAL wave (points) is being drawn onto screen (I believe): TEST
         super.onDraw(canvas);
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        float[] hsv = {hue,1,value};
+        mStrokePaint.setColor(Color.HSVToColor(hsv));
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         LinkedList<float[]> temp = mHistoricalData;      //what's this all about? find out from "TIP" below...
         if (mMode == MODE_RECORDING && temp != null) {
             brightness = colorDelta;
             for (float[] p : temp) {
+
+                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+                hsv = new float[] {hue,1,value};
+                mStrokePaint.setColor(Color.HSVToColor(hsv));
+
+                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                
                 mStrokePaint.setAlpha(brightness);
                 canvas.drawLines(p, mStrokePaint);       //WHAT THE HELL IS GOING ON HERE??? ===> INSPECT API: canvas.drawLines()
                 brightness += colorDelta;
             }
-        } else if (mMode == MODE_PLAYBACK) {
-            if (mCachedWaveform != null) {
-                canvas.drawPicture(mCachedWaveform);
-            } else if (mCachedWaveformBitmap != null) {
-                canvas.drawBitmap(mCachedWaveformBitmap, null, drawRect, null);
-            }
-            if (mMarkerPosition > -1 && mMarkerPosition < mAudioLength)
-                canvas.drawLine(xStep * mMarkerPosition, 0, xStep * mMarkerPosition, height, mMarkerPaint);
         }
     }
 
@@ -164,6 +176,24 @@ public class WaveformBassColorView extends View {
         calculateAudioLength();
         onSamplesChanged();        //actually calling this method... could be important... probably not..
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    public void setYPoints(float[] yPoints) {
+        mYPoints = yPoints;
+    }
+
+    public float[] getYPoints() {
+        return mYPoints;
+    }
+
+    /*
+    public float[] getWaveformPoints() {
+        return mWaveformPoints;
+    }
+    */
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public int getMarkerPosition() {
         return mMarkerPosition;
@@ -218,44 +248,15 @@ public class WaveformBassColorView extends View {
             }
 
             drawRecordingWaveform(mSamples, waveformPoints);      //mSamples == buffer (below)
+
             temp.addLast(waveformPoints);
             mHistoricalData = temp;
             postInvalidate();
-        } else if (mMode == MODE_PLAYBACK) {
-            mMarkerPosition = -1;
-            createPlaybackWaveform();
         }
-    }
-
-
-
-    Path drawPlaybackWaveform(int width, int height, short[] buffer) {   //Can basically ignore.....
-        Path waveformPath = new Path();
-        float centerY = height / 2f;
-        float max = Short.MAX_VALUE;
-
-        short[][] extremes = SamplingUtils.getExtremes(buffer, width);
-
-        // draw maximums
-        for (int x = 0; x < width; x++) {
-            short sample = extremes[x][0];
-            float y = centerY - ((sample / max) * centerY);
-            waveformPath.lineTo(x, y);
-        }
-
-        // draw minimums
-        for (int x = width - 1; x >= 0; x--) {
-            short sample = extremes[x][1];
-            float y = centerY - ((sample / max) * centerY);
-            waveformPath.lineTo(x, y);
-        }
-
-        waveformPath.close();
-
-        return waveformPath;
     }
 
     void drawRecordingWaveform(short[] buffer, float[] waveformPoints) {    //difference between these arguments??? CRUCIAL!!!!!!
+
         float lastX = -1;
         float lastY = -1;
         int pointIndex = 0;
@@ -263,7 +264,6 @@ public class WaveformBassColorView extends View {
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        //float[] yPoints = new float[waveformPoints.length/2];      //2*width
         float[] yPoints = new float[2*width];
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -311,6 +311,12 @@ public class WaveformBassColorView extends View {
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+        mYPoints = yPoints;      //MAYBE CONSIDER PUTTING INSIDE drawRecordingWaveform / other methods
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         for(int i=1; i < 4*width; i+=2)     //making the line flat
             waveformPoints[i] = centerY;
 
@@ -318,50 +324,88 @@ public class WaveformBassColorView extends View {
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        //NO CROSSOVER (yet!)
-
-        //60-500Hz <===== Possibly lower upper bound to 300/400Hz (eliminate this range)
-
-        //i+=194: ACTUAL, FAR too inaccurate
-
-        for(int i=1; i < 4*width; i+=66)                      //2*width: cuts off right half (all freqs above 350Hz)
-            waveformPoints[i] = -Math.abs(yPoints[i/198 + width/450]) + centerY;      //TRIPLING UP (to make fuller)    //450 < x < 500
+        //mWaveformPoints = waveformPoints;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    }
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    private void createPlaybackWaveform() {
-        if (width <= 0 || height <= 0 || mSamples == null)
-            return;
+        //LANDSCAPE
 
-        Canvas cacheCanvas;
-        if (Build.VERSION.SDK_INT >= 23 && isHardwareAccelerated()) {
-            mCachedWaveform = new Picture();
-            cacheCanvas = mCachedWaveform.beginRecording(width, height);
-        } else {
-            mCachedWaveformBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-            cacheCanvas = new Canvas(mCachedWaveformBitmap);
+        //NO CROSSOVER (yet!)
+
+        //80?-260Hz <===== Possibly raise upper bound to 300/350
+
+        //i+=194: ACTUAL, FAR too inaccurate
+
+        float numerator = 0f;
+        float denominator = 0.0001f;
+
+        for(int i=87; i < 4*width; i+=86) {                     //2*width: cuts off right half (all freqs above 350Hz)
+            waveformPoints[i] = -Math.abs(yPoints[i / 430 + width / 400]) + centerY;      //QUINTUPLED UP (to make fuller)
+
+            numerator += i*(-waveformPoints[i]+centerY)*(-waveformPoints[i-86]+centerY);
+            denominator += (-waveformPoints[i]+centerY)*(-waveformPoints[i-86]+centerY);
         }
 
-        Path mWaveform = drawPlaybackWaveform(width, height, mSamples);
-        cacheCanvas.drawPath(mWaveform, mFillPaint);
-        cacheCanvas.drawPath(mWaveform, mStrokePaint);
-        drawAxis(cacheCanvas, width);
+        if(hue > 0)
+            previousHue = hue;
 
-        if (mCachedWaveform != null)
-            mCachedWaveform.endRecording();
-    }
+        float frequency = numerator/denominator;
+        frequency /= 4*width;
+        hue = 320*frequency;    ///128* && +0
 
-    private void drawAxis(Canvas canvas, int width) {
-        int seconds = mAudioLength / 1000;
-        float xStep = width / (mAudioLength / 1000f);
-        float textHeight = mTextPaint.getTextSize();
-        float textWidth = mTextPaint.measureText("10.00");
-        int secondStep = (int)(textWidth * seconds * 2) / width;
-        secondStep = Math.max(secondStep, 1);
-        for (float i = 0; i <= seconds; i += secondStep) {
-            canvas.drawText(String.format("%.2f", i), i * xStep, textHeight, mTextPaint);
-        }
+        float deltaHue = hue - previousHue;      //making color transitions more smooth
+        float ratioHue = Math.max(hue, previousHue) / Math.max(hue, previousHue);
+        deltaHue /= ratioHue;
+        hue = previousHue + deltaHue;
+
+        averageVolume += denominator;
+        averageVolume /= 2;
+
+        if(averageVolume < 500f)     //adjusting value for volume of music
+            denominator /= 250f;
+        else if(averageVolume < 1000f)
+            denominator /= 500f;
+        else if(averageVolume < 5000f)
+            denominator /= 2500f;
+        else if(averageVolume < 10000f)
+            denominator /= 5000f;
+        else if(averageVolume < 20000f)
+            denominator /= 10000f;
+        else if(averageVolume < 50000f)
+            denominator /= 25000f;
+        else if(averageVolume < 100000f)
+            denominator /= 50000f;
+        else if(averageVolume < 200000f)
+            denominator /= 100000f;
+        else if(averageVolume < 500000f)
+            denominator /= 250000f;
+        else if(averageVolume < 1000000f)
+            denominator /= 500000f;
+        else
+            denominator /= 1000000f;
+
+
+        //denominator /= 30000f;
+        value = (float) -Math.pow((denominator+1),-1)+1;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //PORTRAIT
+
+        //NO CROSSOVER (yet!)
+
+        //75-500Hz <===== Possibly lower upper bound to 300/400Hz (eliminate this range)
+
+        //i+=194: ACTUAL, FAR too inaccurate
+
+        //for(int i=1; i < 4*width; i+=66)                      //2*width: cuts off right half (all freqs above 350Hz)
+        //    waveformPoints[i] = -Math.abs(yPoints[i/198 + width/450]) + centerY;      //TRIPLING UP (to make fuller)    //450 < x < 500
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     }
 }

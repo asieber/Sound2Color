@@ -318,7 +318,7 @@ public class WaveformBassView extends View {
 
         //NO CROSSOVER (yet!)
 
-        //45-300Hz
+        //76-300Hz      <===========CHANGE TO 50/60, NOT 76
 
         //i+=194: ACTUAL, FAR too inaccurate
 

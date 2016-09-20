@@ -98,12 +98,15 @@ public class MainActivity extends AppCompatActivity {
         }, new AudioDataReceivedListener() {
             @Override
             public void onAudioDataReceived(short[] data) {
-                mRealtimeWaveformViewTrebleColor.setSamples(data);
+                mRealtimeWaveformViewBassColor.setSamples(data);
 
                 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-                mRealtimeWaveformViewMidColor.setSamples(data);
-                mRealtimeWaveformViewBassColor.setSamples(data);
+                //Can't pass in waveformPoints b.c. each centerY (&& width???) is different...
+
+                mRealtimeWaveformViewMidColor.setSamples(data, mRealtimeWaveformViewBassColor.getYPoints());
+
+                mRealtimeWaveformViewTrebleColor.setSamples(data, mRealtimeWaveformViewBassColor.getYPoints());
 
                 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
