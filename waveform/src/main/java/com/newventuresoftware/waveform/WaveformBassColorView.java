@@ -23,13 +23,13 @@ import be.tarsos.dsp.util.fft.FFT;
 /**
  * TODO: document your custom view class.
  */
-public class WaveformBassColorView extends View {
+public class WaveformBassColorView extends WaveformView {
 
-    public static final int MODE_RECORDING = 1;
-    public static final int MODE_PLAYBACK = 2;
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    private static final int HISTORY_SIZE = 6;
+    private float value, hue, previousHue, averageVolume;
 
+<<<<<<< HEAD
     private TextPaint mTextPaint;
     private Paint mStrokePaint, mFillPaint, mMarkerPaint;
 
@@ -52,6 +52,8 @@ public class WaveformBassColorView extends View {
 
     private float[] mYPoints;   //, mWaveformPoints
 
+=======
+>>>>>>> d976102d5b97b23b36dd4dabee7913e41347ad12
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public WaveformBassColorView(Context context) {
@@ -69,6 +71,7 @@ public class WaveformBassColorView extends View {
         init(context, attrs, defStyle);
     }
 
+<<<<<<< HEAD
     private void init(Context context, AttributeSet attrs, int defStyle) {
         // Load attributes
         final TypedArray a = getContext().obtainStyledAttributes(
@@ -257,6 +260,13 @@ public class WaveformBassColorView extends View {
 
     void drawRecordingWaveform(short[] buffer, float[] waveformPoints) {    //difference between these arguments??? CRUCIAL!!!!!!
 
+=======
+    void drawRecordingWaveform(short[] buffer, float[] waveformPoints) {    //difference between these arguments??? CRUCIAL!!!!!!
+
+        int width = super.width;
+        float centerY = super.centerY;
+
+>>>>>>> d976102d5b97b23b36dd4dabee7913e41347ad12
         float lastX = -1;
         float lastY = -1;
         int pointIndex = 0;
@@ -307,9 +317,7 @@ public class WaveformBassColorView extends View {
         FFT fft = new FFT(2*width, null);     //[100, 2*width] == "safe" range ....... null window == BUGGY, cos == GOOD
         fft.forwardTransform(yPoints);
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        super.mYPoints = yPoints;      //FINAL PIECE OF THE PUZZLE
 
         mYPoints = yPoints;      //MAYBE CONSIDER PUTTING INSIDE drawRecordingWaveform / other methods
 
@@ -320,10 +328,10 @@ public class WaveformBassColorView extends View {
         for(int i=1; i < 4*width; i+=2)     //making the line flat
             waveformPoints[i] = centerY;
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        if(super.isPortrait) {         //NO IDEA ABOUT THE LOWER RANGE ON THIS ONE (CRITICAL KNOWLEDGE TO CONTINUE)
 
+<<<<<<< HEAD
         //mWaveformPoints = waveformPoints;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -335,9 +343,15 @@ public class WaveformBassColorView extends View {
         //NO CROSSOVER (yet!)
 
         //80?-260Hz <===== Possibly raise upper bound to 300/350
+=======
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        //i+=194: ACTUAL, FAR too inaccurate
+            //PORTRAIT
+>>>>>>> d976102d5b97b23b36dd4dabee7913e41347ad12
 
+            //80?-500Hz?????? <===== Possibly raise upper bound to 300/350
+
+<<<<<<< HEAD
         float numerator = 0f;
         float denominator = 0.0001f;
 
@@ -389,9 +403,14 @@ public class WaveformBassColorView extends View {
 
         //denominator /= 30000f;
         value = (float) -Math.pow((denominator+1),-1)+1;
+=======
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+>>>>>>> d976102d5b97b23b36dd4dabee7913e41347ad12
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            float numerator = 0f;
+            float denominator = 0.0001f;
 
+<<<<<<< HEAD
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         //PORTRAIT
@@ -407,5 +426,127 @@ public class WaveformBassColorView extends View {
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+=======
+            for(int i=45; i < 4*width; i+=44) {                     //2*width: cuts off right half (all freqs above 350Hz)
+                waveformPoints[i] = -Math.abs(yPoints[i / 220 + width / 250]) + centerY;      //QUINTUPLED UP (to make fuller)
+
+                numerator += i*(-waveformPoints[i]+centerY)*(-waveformPoints[i-44]+centerY);
+                denominator += (-waveformPoints[i]+centerY)*(-waveformPoints[i-44]+centerY);
+            }
+
+            if(hue > 0)
+                previousHue = hue;
+
+            float frequency = numerator/denominator;
+            frequency /= 4*width;
+            hue = 320*frequency;    ///128* && +0
+
+            float deltaHue = hue - previousHue;      //making color transitions more smooth
+            float ratioHue = Math.max(hue, previousHue) / Math.max(hue, previousHue);
+            deltaHue /= ratioHue;
+            hue = previousHue + deltaHue;
+
+            averageVolume = super.averageVolume;
+
+            averageVolume += denominator;
+            averageVolume /= 2;
+
+            if(averageVolume < 500f)     //adjusting value for volume of music
+                denominator /= 400f;
+            else if(averageVolume < 1000f)
+                denominator /= 800f;
+            else if(averageVolume < 5000f)
+                denominator /= 4000f;
+            else if(averageVolume < 10000f)
+                denominator /= 8000f;
+            else if(averageVolume < 20000f)
+                denominator /= 16000f;
+            else if(averageVolume < 50000f)
+                denominator /= 40000f;
+            else if(averageVolume < 100000f)
+                denominator /= 80000f;
+            else if(averageVolume < 200000f)
+                denominator /= 160000f;
+            else if(averageVolume < 500000f)
+                denominator /= 400000f;
+            else if(averageVolume < 1000000f)
+                denominator /= 800000f;
+            else
+                denominator /= 1000000f;
+
+            //denominator /= 30000f;
+            value = (float) -Math.pow((denominator+1),-1)+1;
+
+            super.hue = hue;
+            super.value = value;
+
+        } else {
+
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            //PORTRAIT
+
+            //75-260Hz <===== Possibly lower upper bound to 300/400Hz (eliminate this range)
+
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            float numerator = 0f;
+            float denominator = 0.0001f;
+
+            for(int i=87; i < 4*width; i+=86) {                     //2*width: cuts off right half (all freqs above 350Hz)
+                waveformPoints[i] = -Math.abs(yPoints[i / 430 + width / 400]) + centerY;      //QUINTUPLED UP (to make fuller)
+
+                numerator += i*(-waveformPoints[i]+centerY)*(-waveformPoints[i-86]+centerY);
+                denominator += (-waveformPoints[i]+centerY)*(-waveformPoints[i-86]+centerY);
+            }
+
+            if(hue > 0)
+                previousHue = hue;
+
+            float frequency = numerator/denominator;
+            frequency /= 4*width;
+            hue = 320*frequency;    ///128* && +0
+
+            float deltaHue = hue - previousHue;      //making color transitions more smooth
+            float ratioHue = Math.max(hue, previousHue) / Math.max(hue, previousHue);
+            deltaHue /= ratioHue;
+            hue = previousHue + deltaHue;
+
+            averageVolume += denominator;
+            averageVolume /= 2;
+
+            if(averageVolume < 500f)     //adjusting value for volume of music
+                denominator /= 400f;
+            else if(averageVolume < 1000f)
+                denominator /= 800f;
+            else if(averageVolume < 5000f)
+                denominator /= 4000f;
+            else if(averageVolume < 10000f)
+                denominator /= 8000f;
+            else if(averageVolume < 20000f)
+                denominator /= 16000f;
+            else if(averageVolume < 50000f)
+                denominator /= 40000f;
+            else if(averageVolume < 100000f)
+                denominator /= 80000f;
+            else if(averageVolume < 200000f)
+                denominator /= 160000f;
+            else if(averageVolume < 500000f)
+                denominator /= 400000f;
+            else if(averageVolume < 1000000f)
+                denominator /= 800000f;
+            else
+                denominator /= 1000000f;
+
+            //denominator /= 30000f;
+            value = (float) -Math.pow((denominator+1),-1)+1;
+
+            super.hue = hue;
+            super.value = value;
+
+        }
+
+>>>>>>> d976102d5b97b23b36dd4dabee7913e41347ad12
     }
+
 }

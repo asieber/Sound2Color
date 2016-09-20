@@ -17,7 +17,11 @@ public class StartScreen extends AppCompatActivity {
 
     /** Called when the user clicks the "TAP TO BEGIN" button */
     public void redirect(View view) {
+<<<<<<< HEAD
         Intent intent = new Intent(this, com.newventuresoftware.waveformdemo.MainMenu.class);
+=======
+        Intent intent = new Intent(this, com.newventuresoftware.waveformdemo.MainActivity.class);
+>>>>>>> d976102d5b97b23b36dd4dabee7913e41347ad12
         startActivity(intent);
     }
 
@@ -41,7 +45,25 @@ public class StartScreen extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
+<<<<<<< HEAD
         getMenuInflater().inflate(R.menu.menu_start_screen, menu);
+=======
+        //getMenuInflater().inflate(R.menu.menu_start_screen, menu);        //add menu/menu_start_screen.xml (below) is present
+
+        //still couldn't delete...
+
+//        <menu xmlns:android="http://schemas.android.com/apk/res/android"
+//        xmlns:app="http://schemas.android.com/apk/res-auto"
+//        xmlns:tools="http://schemas.android.com/tools"
+//        tools:context=".StartScreen">
+//        <item
+//        android:id="@+id/action_settings"
+//        android:orderInCategory="100"
+//        android:title="@string/action_settings"
+//        app:showAsAction="never" />
+//        </menu>
+
+>>>>>>> d976102d5b97b23b36dd4dabee7913e41347ad12
         return true;
     }
 

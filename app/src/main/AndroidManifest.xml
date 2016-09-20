@@ -21,7 +21,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+<<<<<<< HEAD
         <activity android:name=".MainMenu" />
+=======
+>>>>>>> d976102d5b97b23b36dd4dabee7913e41347ad12
         <activity android:name=".MainActivity"></activity>
     </application>
 

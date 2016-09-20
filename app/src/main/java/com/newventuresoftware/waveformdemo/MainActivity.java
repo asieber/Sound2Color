@@ -15,6 +15,7 @@
 package com.newventuresoftware.waveformdemo;
 
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
@@ -30,13 +31,11 @@ import android.view.MenuItem;
 import com.newventuresoftware.waveform.WaveformBassColorView;
 import com.newventuresoftware.waveform.WaveformMidColorView;
 import com.newventuresoftware.waveform.WaveformTrebleColorView;
-import com.newventuresoftware.waveform.WaveformView;
 
 import org.apache.commons.io.IOUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -60,24 +59,29 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        setContentView(R.layout.activity_main);                         //Still don't really understand is layout == land vs port
+        //Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        //setSupportActionBar(toolbar);
+
+        mRealtimeWaveformViewTrebleColor = (WaveformTrebleColorView) findViewById(R.id.waveformTrebleColorView);
+        mRealtimeWaveformViewMidColor = (WaveformMidColorView) findViewById(R.id.waveformMidColorView);
+        mRealtimeWaveformViewBassColor = (WaveformBassColorView) findViewById(R.id.waveformBassColorView);
+
+        if(getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
+            mRealtimeWaveformViewTrebleColor.setPortraitOrientation(true);
+            mRealtimeWaveformViewMidColor.setPortraitOrientation(true);     //PUT THESE INTO waveformPoints method?
+            mRealtimeWaveformViewBassColor.setPortraitOrientation(true);
+        } else {
+            mRealtimeWaveformViewTrebleColor.setPortraitOrientation(false);
+            mRealtimeWaveformViewMidColor.setPortraitOrientation(false);     //PUT THESE INTO waveformPoints method?
+            mRealtimeWaveformViewBassColor.setPortraitOrientation(false);
+        }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         //mRealtimeWaveformView = (WaveformView) findViewById(R.id.waveformView);
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        mRealtimeWaveformViewTrebleColor = (WaveformTrebleColorView) findViewById(R.id.waveformTrebleColorView);
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        mRealtimeWaveformViewMidColor = (WaveformMidColorView) findViewById(R.id.waveformMidColorView);
-        mRealtimeWaveformViewBassColor = (WaveformBassColorView) findViewById(R.id.waveformBassColorView);
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         BlockingQueue<short[]> buffer = new ArrayBlockingQueue<short[]>(RecordingThread.SAMPLING_RATE);
         mRecordingThread = new RecordingThread(this, buffer, null);
@@ -98,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
         }, new AudioDataReceivedListener() {
             @Override
             public void onAudioDataReceived(short[] data) {
+<<<<<<< HEAD
                 mRealtimeWaveformViewBassColor.setSamples(data);
 
                 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,10 +111,17 @@ public class MainActivity extends AppCompatActivity {
 
                 mRealtimeWaveformViewMidColor.setSamples(data, mRealtimeWaveformViewBassColor.getYPoints());
 
-                mRealtimeWaveformViewTrebleColor.setSamples(data, mRealtimeWaveformViewBassColor.getYPoints());
+=======
 
                 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+                mRealtimeWaveformViewBassColor.setSamples(data, null);      //portrait Exception
+                //mRealtimeWaveformViewBassColor.setSamples(data);      //portrait Exception
+                mRealtimeWaveformViewMidColor.setSamples(data, mRealtimeWaveformViewBassColor.getYPoints());
+>>>>>>> d976102d5b97b23b36dd4dabee7913e41347ad12
+                mRealtimeWaveformViewTrebleColor.setSamples(data, mRealtimeWaveformViewBassColor.getYPoints());
+
+                ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             }
         });
 
@@ -201,6 +213,9 @@ public class MainActivity extends AppCompatActivity {
     private void requestMicrophonePermission() {
         if (ActivityCompat.shouldShowRequestPermissionRationale(this, android.Manifest.permission.RECORD_AUDIO)) {
             // Show dialog explaining why we need record audio
+
+            ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
             Snackbar.make(mRealtimeWaveformViewTrebleColor, "Microphone access is required in order to record audio",
                     Snackbar.LENGTH_INDEFINITE).setAction("OK", new View.OnClickListener() {
                 @Override
@@ -209,9 +224,6 @@ public class MainActivity extends AppCompatActivity {
                             android.Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO);
                 }
             }).show();
-
-            ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
             Snackbar.make(mRealtimeWaveformViewMidColor, "Microphone access is required in order to record audio",
                     Snackbar.LENGTH_INDEFINITE).setAction("OK", new View.OnClickListener() {
                 @Override
@@ -220,7 +232,6 @@ public class MainActivity extends AppCompatActivity {
                             android.Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO);
                 }
             }).show();
-
             Snackbar.make(mRealtimeWaveformViewBassColor, "Microphone access is required in order to record audio",
                     Snackbar.LENGTH_INDEFINITE).setAction("OK", new View.OnClickListener() {
                 @Override
@@ -229,7 +240,6 @@ public class MainActivity extends AppCompatActivity {
                             android.Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO);
                 }
             }).show();
-
 
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         } else {
